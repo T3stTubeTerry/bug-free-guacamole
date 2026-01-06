@@ -1,0 +1,1 @@
+"""AegisMeta core package."""
