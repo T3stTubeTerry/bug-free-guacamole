@@ -242,17 +242,21 @@ class AegisMetaApp(ttk.Frame):
         threading.Thread(target=self._execute_extraction, args=(list(evidence),), daemon=True).start()
 
     def _execute_extraction(self, evidence) -> None:
-        for item in evidence:
-            derived = self.state.extraction_service.run(self.state.case_db, item["id"], Path(item["path"]))
-            ingest_file_events(self.state.case_db.conn, item["case_id"], item["id"], Path(item["path"]))
-            lines = [f"{d.key}: {d.value}" for d in derived]
-            if any(d.key == "high_entropy_flag" for d in derived):
-                lines.insert(0, "[ALERT] High entropy detected")
-            self.task_queue.put({"type": "metadata", "data": lines})
-            self.task_queue.put({"type": "progress", "data": 1})
-        self.state.anomaly_service.evaluate(self.state.case_db, self.state.case_db.case_id or 1)
-        self.task_queue.put({"type": "progress_done"})
-        self._refresh_overview()
+        worker_db = db.CaseDatabase(self.state.case_db.path, case_id=self.state.case_db.case_id)
+        try:
+            for item in evidence:
+                derived = self.state.extraction_service.run(worker_db, item["id"], Path(item["path"]))
+                ingest_file_events(worker_db.conn, item["case_id"], item["id"], Path(item["path"]))
+                lines = [f"{d.key}: {d.value}" for d in derived]
+                if any(d.key == "high_entropy_flag" for d in derived):
+                    lines.insert(0, "[ALERT] High entropy detected")
+                self.task_queue.put({"type": "metadata", "data": lines})
+                self.task_queue.put({"type": "progress", "data": 1})
+            self.state.anomaly_service.evaluate(worker_db, worker_db.case_id or 1)
+            self.task_queue.put({"type": "progress_done"})
+            self._refresh_overview()
+        finally:
+            worker_db.close()
 
     def _generate_report(self) -> None:
         if not self.state.rbac.check("generate_report"):
