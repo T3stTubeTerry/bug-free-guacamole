@@ -1,0 +1,29 @@
+[project]
+name = "aegismeta-forensics"
+version = "0.1.0"
+description = "AegisMeta Forensics offline-first digital forensics workstation"
+authors = [{name = "AegisMeta", email = "dev@example.com"}]
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+    "pillow>=10.0.0",
+    "pypdf2>=3.0.0",
+    "cryptography>=42.0.0",
+    "blake3>=0.3.4",
+    "numpy>=1.26",
+]
+
+[project.scripts]
+aegismeta = "aegismeta.__main__:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+target-version = ["py311"]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
