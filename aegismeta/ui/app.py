@@ -93,6 +93,7 @@ class AegisMetaApp(ttk.Frame):
         self._build_settings_section()
         self._build_logs_section()
         self._show_section("Overview")
+        self._show_section("Case")
 
     def _show_section(self, name: str) -> None:
         for frame in self.section_frames.values():
@@ -135,6 +136,14 @@ class AegisMetaApp(ttk.Frame):
         ttk.Label(detail, text="Evidence Details", font=("Segoe UI", 12, "bold")).pack(pady=4)
         self.evidence_detail = tk.Text(detail, height=20, width=40)
         self.evidence_detail.pack(fill=tk.BOTH, expand=True)
+    def _build_evidence_section(self) -> None:
+        frame = self.section_frames["Evidence"]
+        ttk.Button(frame, text="Add Evidence", command=self._add_evidence).pack(pady=6)
+        self.evidence_tree = ttk.Treeview(frame, columns=("name", "path", "sha256"), show="headings")
+        for col in ("name", "path", "sha256"):
+            self.evidence_tree.heading(col, text=col)
+            self.evidence_tree.column(col, width=200)
+        self.evidence_tree.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
 
     def _build_extract_section(self) -> None:
         frame = self.section_frames["Extract"]
@@ -257,6 +266,14 @@ class AegisMetaApp(ttk.Frame):
             self._refresh_overview()
         finally:
             worker_db.close()
+        threading.Thread(target=self._execute_extraction, args=(list(evidence),), daemon=True).start()
+
+    def _execute_extraction(self, evidence) -> None:
+        for item in evidence:
+            derived = self.state.extraction_service.run(self.state.case_db, item["id"], Path(item["path"]))
+            ingest_file_events(self.state.case_db.conn, item["case_id"], item["id"], Path(item["path"]))
+            self.task_queue.put({"type": "metadata", "data": [f"{d.key}: {d.value}" for d in derived]})
+        self.state.anomaly_service.evaluate(self.state.case_db, self.state.case_db.case_id or 1)
 
     def _generate_report(self) -> None:
         if not self.state.rbac.check("generate_report"):
