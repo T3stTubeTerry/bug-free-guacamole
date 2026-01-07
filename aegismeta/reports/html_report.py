@@ -111,6 +111,16 @@ def generate_html_report(case_db: db.CaseDatabase, output_path: Path) -> Path:
     container.appendChild(svg);
 
     const radius = Math.min(width, height) / 3;
+    data.nodes.forEach((node, idx) => {{
+        const angle = (idx / data.nodes.length) * Math.PI * 2;
+        node.x = width / 2 + radius * Math.cos(angle);
+        node.y = height / 2 + radius * Math.sin(angle);
+    }});
+
+    data.links.forEach(link => {{
+        const src = data.nodes.find(n => n.id === link.source);
+        const tgt = data.nodes.find(n => n.id === link.target);
+        if (src && tgt) {{
     data.nodes.forEach((node, idx) => {
         const angle = (idx / data.nodes.length) * Math.PI * 2;
         node.x = width / 2 + radius * Math.cos(angle);
@@ -128,6 +138,10 @@ def generate_html_report(case_db: db.CaseDatabase, output_path: Path) -> Path:
             line.setAttribute('y2', tgt.y);
             line.setAttribute('stroke', '#999');
             svg.appendChild(line);
+        }}
+    }});
+
+    data.nodes.forEach(node => {{
         }
     });
 
@@ -145,6 +159,7 @@ def generate_html_report(case_db: db.CaseDatabase, output_path: Path) -> Path:
         label.setAttribute('y', node.y + 4);
         label.setAttribute('font-size', '10');
         svg.appendChild(label);
+    }});
     });
     </script>
     </div>
